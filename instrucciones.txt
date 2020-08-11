@@ -1,0 +1,14 @@
+bajar docker
+
+generar los archivos
+
+instalar tensorflow
+
+-- para instalar el ambiente
+docker build -t bodypix ./bodypix
+docker build -t fakecam ./fakecam
+
+
+
+
+   
