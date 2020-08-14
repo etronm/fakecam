@@ -8,11 +8,12 @@ docker build  -t fakecam ./fakecam
 
 ############ CLEAN 
 docker container stop fakecam bodypix
-docker container start fakecam bodypix
+#docker container start fakecam bodypix
 
 docker container rm fakecam bodypix
 docker image rm fakecam bodypix
 docker network rm fakecam
+
 
 
 #################### MOUNT 
@@ -24,28 +25,27 @@ sudo modprobe v4l2loopback devices=1 video_nr=20 card_label="v4l2loopback" exclu
 
 ############### START 
 # create a network
-sudo docker network create --driver bridge fakecam
+docker network rm fakecam
+docker network create --driver bridge fakecam
 
+
+##############################################
+##############################################
+docker container stop fakecam 
+docker container rm fakecam 
+docker build  -t fakecam ./fakecam
+##############################################
+##############################################
 
 # start the bodypix app
-sudo docker run -d \
-  --name=bodypix \
-  --network=fakecam \
-  -p 9000:9000 \
-  --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 \
-  bodypix
-
+docker run -d --name=bodypix --network=fakecam -p 9000:9000 --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 bodypix
 
 # start the camera, note that we need to pass through video devices,
 # and we want our user ID and group to have permission to them
 # you may need to `sudo groupadd $USER video`
-sudo docker run -d \
-  --name=fakecam \
-  --network=fakecam \
-  -u "$(id -u):$(getent group video | cut -d: -f3)" \
-  $(find /dev -name 'video*' -printf "--device %p ") \
-  fakecam
+docker run -d --name=fakecam --network=fakecam -u "$(id -u):$(getent group video | cut -d: -f3)" $(find /dev -name 'video*' -printf "--device %p ") fakecam
 
+ffplay /dev/video20
 
 
 

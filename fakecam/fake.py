@@ -4,20 +4,6 @@ import numpy as np
 import requests
 import pyfakewebcam
 
-def get_mask(frame, bodypix_url='http://etron-superfly:9000'):
-    print("etm>1")    
-    _, data = cv2.imencode(".jpg", frame)
-    print("etm>1b")    
-    r = requests.post(
-        url=bodypix_url,
-        data=data.tobytes(),
-        headers={'Content-Type': 'application/octet-stream'})
-    print("etm>2")    
-    mask = np.frombuffer(r.content, dtype=np.uint8)
-    print("etm>3")    
-    mask = mask.reshape((frame.shape[0], frame.shape[1]))
-    print("etm>4")    
-    return mask
 
 def post_process_mask(mask):
     mask = cv2.dilate(mask, np.ones((10,10), np.uint8) , iterations=1)
@@ -52,6 +38,21 @@ def hologram_effect(img):
     out = cv2.addWeighted(img, 0.5, holo_blur, 0.6, 0)
     return out
 
+def get_mask(frame, bodypix_url='http://bodypix:9000'):
+    print("etm>1")    
+    _, data = cv2.imencode(".jpg", frame)
+    print("etm>1b")    
+    r = requests.post(
+        url=bodypix_url,
+        data=data.tobytes(),
+        headers={'Content-Type': 'application/octet-stream'})
+    print("etm>2")    
+    mask = np.frombuffer(r.content, dtype=np.uint8)
+    print("etm>3")    
+    mask = mask.reshape((frame.shape[0], frame.shape[1]))
+    print("etm>4")    
+    return mask
+
 def get_frame(cap, background_scaled):
     _, frame = cap.read()
     # fetch the mask with retries (the app needs to warmup and we're lazy)
@@ -60,7 +61,7 @@ def get_frame(cap, background_scaled):
     while mask is None:
         try:
             mask = get_mask(frame)
-        except requests.RequestException as err:
+        except requests.RequestException:
             print("mask request failed, retrying")
             #raise SystemExit(err)
     # post-process mask and frame
@@ -95,38 +96,33 @@ background_scaled = cv2.resize(background, (width, height))
 # ==etm============================================================
 # ==etm============================================================
 
-
-
-
 # frames forever
 while True:
     success, frame = cap.read()
 
-    #----------- 
-    #tratar de imprimir tensoflow
-    #cv2.imwrite("test.jpg", frame)
-    #break
+    if 1==1:
+        #get mask 
+        _, data = cv2.imencode(".jpg", frame)
+        bodypix_url='http://bodypix:9000'
+        r = requests.post(
+                url=bodypix_url,
+                data=data.tobytes(),
+                headers={'Content-Type': 'application/octet-stream'})
 
-    #-----------
-    #solo lee camara ==etm============================================================
-    frame = hologram_effect(frame)
+        mask = np.frombuffer(r.content, dtype=np.uint8)
+        mask = mask.reshape((frame.shape[0], frame.shape[1]))
 
-    #--- tratar de implementar tensorflow.........................
-    #_, data = cv2.imencode(".jpg", frame)
-    #bodypix_url='http://bodypix:9000'
-
-    #r = requests.post(
-    #        url=bodypix_url,
-    #        data=data.tobytes(),
-    #        headers={'Content-Type': 'application/octet-stream'})
-
-    #print(r)
-    # ==etm============================================================
-    #obten chewaka
-    #frame = get_frame(cap, background_scaled)
-    #==etm============================================================
-    
-    
+        #get frame 
+        # post-process mask and frame
+        mask = post_process_mask(mask)
+        frame = hologram_effect(frame)
+        # composite the foreground and background
+        inv_mask = 1-mask
+        for c in range(frame.shape[2]):
+            frame[:,:,c] = frame[:,:,c]*mask + background_scaled[:,:,c]*inv_mask
+    else:
+        frame = hologram_effect(frame)
+        
     # fake webcam expects RGB
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     fake.schedule_frame(frame)

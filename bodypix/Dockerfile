@@ -15,7 +15,7 @@ WORKDIR /src
 COPY package.json /src/
 RUN npm install
 
-EXPOSE 9000
+#EXPOSE 9000
 
 # Setup our app as the entrypoint
 COPY app.js /src/
